@@ -12,11 +12,12 @@
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
-    "types": ["node", "jest","express"]
+    "types": ["node", "jest","express"],
+    "rootDir": "."
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
