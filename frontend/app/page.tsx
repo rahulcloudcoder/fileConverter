@@ -295,14 +295,14 @@ export default function Home() {
                           </p>
                         </div>
                       </div>
-                      <a
+                      <Link
                         href={downloadUrl}
                         download={`converted.${targetFormat}`}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center space-x-2"
                       >
                         <Download className="h-5 w-5" />
                         <span>Download</span>
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 )}
