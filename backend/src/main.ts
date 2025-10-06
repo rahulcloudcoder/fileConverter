@@ -14,7 +14,7 @@ async function bootstrap() {
   
   // CORS - Updated for production
   app.enableCors({
-    origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'https://file-converter-green.vercel.app/'],
+    origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'https://file-converter-green.vercel.app'],
     methods: ['GET', 'POST'],
     credentials: true,
   });
