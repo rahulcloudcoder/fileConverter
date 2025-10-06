@@ -12,7 +12,25 @@ export const metadata: Metadata = {
     template: '%s | FileConverter Pro'
   },
   description: 'Free online file converter. Convert images (JPG, PNG, WEBP, GIF), documents (PDF, DOCX, TXT) and more. No registration required. Secure & private.',
-  keywords: 'file converter, image converter, pdf converter, document converter, online converter, jpg to png, pdf to docx, free file conversion',
+   keywords: [
+    'file converter',
+    'image converter', 
+    'pdf converter',
+    'document converter',
+    'online converter',
+    'jpg to png',
+    'pdf to docx',
+    'pdf to word',
+    'free file conversion',
+    'webp to jpg',
+    'png to jpg',
+    'docx to pdf',
+    'image format converter',
+    'document format converter',
+    'free online converter',
+    'secure file converter',
+    'privacy focused converter'
+  ].join(', '),
   authors: [{ name: 'FileConverter Pro' }],
   metadataBase: new URL(SITE_URL),
   openGraph: {
