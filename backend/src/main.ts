@@ -13,10 +13,16 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   
   // CORS - Updated for production
-  app.enableCors({
-    origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'https://file-converter-green.vercel.app'],
-    methods: ['GET', 'POST'],
+    app.enableCors({
+    origin: [
+      'http://localhost:3000',
+      'https://file-converter-green.vercel.app',
+      'https://file-converter-pro.vercel.app',
+      'https://*.vercel.app' // Allow all Vercel subdomains
+    ],
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
   // Validation
