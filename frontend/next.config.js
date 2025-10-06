@@ -9,7 +9,7 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   images: {
-    domains: ['your-app.vercel.app'],
+    domains: ['your-fileconverter.vercel.app'],
   },
   async headers() {
     return [
@@ -27,10 +27,6 @@ const nextConfig = {
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
           },
         ],
       },

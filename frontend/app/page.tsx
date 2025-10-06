@@ -5,11 +5,12 @@ import { useDropzone } from 'react-dropzone';
 import axios from 'axios';
 import { Upload, Download, File, Image, Shield, Zap, CheckCircle, AlertCircle, Loader2, Users, Clock, Globe } from 'lucide-react';
 import Script from 'next/script';
+import Link from 'next/link'
 
 interface SupportedConversions {
   [mimeType: string]: string[];
 }
-
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000/api';
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [targetFormat, setTargetFormat] = useState('');
@@ -22,7 +23,7 @@ export default function Home() {
   useEffect(() => {
     const fetchSupportedConversions = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/conversion/supported-formats');
+        const response = await axios.get(`${BACKEND_URL}/conversion/supported-formats`);
         setSupportedConversions(response.data.data);
       } catch (err) {
         console.error('Failed to fetch supported conversions:', err);
@@ -70,7 +71,7 @@ export default function Home() {
     formData.append('targetFormat', targetFormat);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/conversion/convert', formData, {
+      const response = await axios.post(`${BACKEND_URL}/conversion/convert`, formData, {
         responseType: 'blob',
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -81,8 +82,10 @@ export default function Home() {
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       setDownloadUrl(url);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Conversion failed. Please try again.');
+    } catch (err: unknown) {
+      // Simple error handling that works for all cases
+      console.error('Conversion error:', err);
+      setError('Conversion failed. Please try again.');
     } finally {
       setConverting(false);
     }
@@ -119,38 +122,17 @@ export default function Home() {
 
             {/* Navigation Menu - Added this section */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a
-                href="/"
-                className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
-              >
+              <Link href="/" className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium">
                 Home
-              </a>
-              <a
-                href="#features"
-                className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
-              >
-                Features
-              </a>
-              <a
-                href="#formats"
-                className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
-              >
-                Formats
-              </a>
-
-              <a
-                href="/about"
-                className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
-              >
+              </Link>
+              <Link href="/about" className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium">
                 About
-              </a>
-              <a
-                href="/contact"
-                className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
-              >
+              </Link>
+              <Link href="/contact" className="text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium">
                 Contact
-              </a>
+              </Link>
             </nav>
+
 
             {/* Mobile menu button - Optional */}
             <div className="md:hidden">
@@ -392,21 +374,21 @@ export default function Home() {
 
             {/* Updated navigation links */}
             <div className="flex justify-center space-x-8 mb-6 flex-wrap">
-              <a href="/" className="text-gray-400 hover:text-white transition-colors">
+              <Link href="/" className="text-gray-400 hover:text-white transition-colors">
                 Home
-              </a>
-              <a href="/about" className="text-gray-400 hover:text-white transition-colors">
+              </Link>
+              <Link href="/about" className="text-gray-400 hover:text-white transition-colors">
                 About
-              </a>
-              <a href="/contact" className="text-gray-400 hover:text-white transition-colors">
+              </Link>
+              <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
                 Contact
-              </a>
-              <a href="/privacy" className="text-gray-400 hover:text-white transition-colors">
+              </Link>
+              <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">
                 Privacy Policy
-              </a>
-              <a href="/terms" className="text-gray-400 hover:text-white transition-colors">
+              </Link>
+              <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">
                 Terms of Service
-              </a>
+              </Link>
             </div>
 
             <p className="text-gray-500 text-sm">
