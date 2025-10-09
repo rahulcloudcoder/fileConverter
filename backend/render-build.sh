@@ -40,10 +40,12 @@ echo "🔨 Building TypeScript project..."
 npm run build
 
 # Check if build was successful
+echo "📁 Checking build output..."
 if [ -d "dist" ]; then
     echo "✅ Build completed successfully!"
-    echo "📁 Build contents:"
-    ls -la dist/
+    echo "📁 Build structure:"
+    find dist -type f -name "*.js" | head -10
+    echo "📍 Main file should be at: dist/main.js"
 else
     echo "❌ Build failed - dist directory not found"
     exit 1
