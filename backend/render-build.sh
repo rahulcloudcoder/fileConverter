@@ -6,32 +6,33 @@ echo "🚀 Starting build process on Render..."
 echo "📦 Updating package list..."
 apt-get update
 
-# Install LibreOffice with minimal dependencies (headless)
-echo "🔧 Installing LibreOffice (this may take a few minutes)..."
-apt-get install -y --no-install-recommends libreoffice
+# Install LibreOffice with proper dependencies
+echo "🔧 Installing LibreOffice..."
+apt-get install -y libreoffice
 
-# Install additional fonts and dependencies for better compatibility
+# Install additional dependencies for better compatibility
 echo "📥 Installing additional dependencies..."
-apt-get install -y fonts-liberation fonts-dejavu poppler-utils
+apt-get install -y \
+    libreoffice-writer \
+    libreoffice-calc \
+    libreoffice-impress \
+    libreoffice-base \
+    fonts-liberation \
+    fonts-dejavu \
+    poppler-utils
 
-# Verify LibreOffice installation
+# Verify installation
 echo "🔍 Verifying LibreOffice installation..."
 if command -v soffice &> /dev/null; then
     echo "✅ LibreOffice command found"
     soffice --version
+    echo "Testing conversion capability..."
+    timeout 15s soffice --headless --help > /dev/null 2>&1 && echo "✅ LibreOffice is functional" || echo "⚠️ LibreOffice has startup issues"
 else
-    echo "❌ LibreOffice command not found, checking alternative locations..."
-    # Check common installation paths
+    echo "❌ LibreOffice command not found"
+    echo "Searching for LibreOffice..."
     find /usr -name "soffice" 2>/dev/null | head -5
     find /opt -name "soffice" 2>/dev/null | head -5
-fi
-
-# Check if LibreOffice is actually working
-echo "🧪 Testing LibreOffice functionality..."
-if timeout 10s soffice --help &> /dev/null; then
-    echo "✅ LibreOffice is working correctly"
-else
-    echo "⚠️ LibreOffice may have issues starting"
 fi
 
 # Install Node.js dependencies
@@ -42,4 +43,4 @@ npm install
 echo "🔨 Building TypeScript project..."
 npm run build
 
-echo "✅ Build process completed!"
+echo "✅ Build completed!"
