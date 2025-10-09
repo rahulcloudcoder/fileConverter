@@ -19,13 +19,11 @@ export class DocumentConverter {
     }
 
     try {
-      // Try LibreOffice first if available
       if (await this.isLibreOfficeAvailable()) {
         const result = await this.convertWithLibreOffice(file, targetFormat);
         if (result.success) return result;
       }
 
-      // Fallback to lightweight converters
       return await this.convertWithFallback(file, targetFormat);
     } catch (error) {
       this.logger.error(`Conversion failed: ${error.message}`);
@@ -46,16 +44,62 @@ export class DocumentConverter {
 
     try {
       const { execSync } = await import('child_process');
+      const fs = await import('fs');
       
-      // Simple check - just try to run 'soffice --version'
-      // This works on both Windows (if in PATH) and Linux
-      execSync('soffice --version', { stdio: 'ignore' });
-      this.libreOfficePath = 'soffice'; // Use the command directly
-      this.logger.log('✅ LibreOffice found in PATH');
-      return true;
-    } catch (error) {
-      this.logger.warn('❌ LibreOffice not found in PATH');
+      // Try different paths based on platform
+      const possiblePaths = this.getPlatformSpecificPaths();
+
+      for (const cmdPath of possiblePaths) {
+        try {
+          if (cmdPath.includes('\\') || cmdPath.includes('/')) {
+            // Full path - check if file exists
+            if (fs.existsSync(cmdPath)) {
+              this.logger.log(`✅ Found LibreOffice at: ${cmdPath}`);
+              this.libreOfficePath = cmdPath;
+              return true;
+            }
+          } else {
+            // Command in PATH
+            if (process.platform === 'win32') {
+              execSync(`where ${cmdPath}`, { stdio: 'ignore' });
+            } else {
+              execSync(`which ${cmdPath}`, { stdio: 'ignore' });
+            }
+            this.logger.log(`✅ Found LibreOffice in PATH: ${cmdPath}`);
+            this.libreOfficePath = cmdPath;
+            return true;
+          }
+        } catch (error) {
+          // Continue to next path
+        }
+      }
+
+      this.logger.warn('❌ LibreOffice not found');
       return false;
+    } catch (error) {
+      this.logger.error(`Error checking LibreOffice: ${error.message}`);
+      return false;
+    }
+  }
+
+  private getPlatformSpecificPaths(): string[] {
+    if (process.platform === 'win32') {
+      return [
+        'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+        'C:\\Program Files\\LibreOffice\\program\\soffice.com',
+        'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+        'soffice', // Fallback to PATH
+        'libreoffice'
+      ];
+    } else {
+      // Linux/Mac paths
+      return [
+        '/usr/bin/soffice',
+        '/usr/bin/libreoffice',
+        '/usr/local/bin/soffice',
+        'soffice', // Fallback to PATH
+        'libreoffice'
+      ];
     }
   }
 
@@ -77,21 +121,16 @@ export class DocumentConverter {
 
       const outputFileName = this.getOutputFileName(file.originalname, targetFormat);
 
-      // Use the detected LibreOffice command (works on both Windows and Linux)
-      const libreOfficeCmd = this.libreOfficePath || 'soffice';
+      // Use the detected LibreOffice path with proper quoting
+      let libreOfficeCmd = this.libreOfficePath!;
+      if (libreOfficeCmd.includes(' ')) {
+        libreOfficeCmd = `"${libreOfficeCmd}"`;
+      }
 
-      // Try different conversion methods
       const commands = [
-        // Method 1: Basic conversion
         `${libreOfficeCmd} --headless --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
-        
-        // Method 2: With writer filter
         `${libreOfficeCmd} --headless --writer --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
-        
-        // Method 3: Force recalculation
         `${libreOfficeCmd} --headless --norestore --nofirststartwizard --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
-        
-        // Method 4: With infilter for PDF
         `${libreOfficeCmd} --headless --infilter="writer_pdf_import" --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
       ];
 
@@ -109,7 +148,6 @@ export class DocumentConverter {
           if (stdout) this.logger.log(`LibreOffice stdout: ${stdout}`);
           if (stderr) this.logger.warn(`LibreOffice stderr: ${stderr}`);
 
-          // Check for output file
           const possibleOutputNames = [
             outputFileName,
             file.originalname.replace('.pdf', '.docx'),
@@ -121,7 +159,7 @@ export class DocumentConverter {
             const outputPath = path.join(tempDir.name, outputName);
             if (await fse.pathExists(outputPath)) {
               const data = await fs.readFile(outputPath);
-              this.logger.log(`✅ Success with command! Output: ${outputName}`);
+              this.logger.log(`✅ Success! Output: ${outputName}`);
               
               return {
                 success: true,
@@ -132,7 +170,6 @@ export class DocumentConverter {
             }
           }
 
-          // List all files for debugging
           const files = await fs.readdir(tempDir.name);
           this.logger.log(`Files in directory: ${files.join(', ')}`);
 
@@ -149,11 +186,11 @@ export class DocumentConverter {
     }
   }
 
+  // Keep all your other methods exactly the same...
   private async convertWithFallback(
     file: Express.Multer.File,
     targetFormat: DocumentFormat,
   ): Promise<ConversionResult> {
-    // Lightweight fallback conversions
     if (file.mimetype === 'text/plain' && targetFormat === DocumentFormat.PDF) {
       return await this.textToPdf(file);
     }
@@ -237,5 +274,10 @@ export class DocumentConverter {
       [DocumentFormat.TXT]: 'text/plain',
     };
     return mimeTypes[format];
+  }
+
+  setLibreOfficePath(path: string): void {
+    this.libreOfficePath = path;
+    this.logger.log(`Manually set LibreOffice path to: ${path}`);
   }
 }
