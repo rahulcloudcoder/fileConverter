@@ -6,6 +6,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/src/main.js",
     "start:dev": "nest start --watch",
+    "start:prod": "node dist/src/main.js",
     "start:debug": "nest start --debug --watch",
     "test:conversion": "ts-node test-conversion.ts",
     "dev": "nodemon --exec ts-node src/main.ts"
