@@ -7,14 +7,13 @@ import { ConversionResult, DocumentFormat } from '../interfaces/conversion.inter
 @Injectable()
 export class DocumentConverter {
   private readonly logger = new Logger(DocumentConverter.name);
-  private readonly maxFileSize = 10 * 1024 * 1024; // 10MB limit for free hosting
+  private readonly maxFileSize = 10 * 1024 * 1024;
   private libreOfficePath: string | null = null;
 
   async convert(
     file: Express.Multer.File,
     targetFormat: DocumentFormat,
   ): Promise<ConversionResult> {
-    // Validate file size for free hosting limits
     if (file.size > this.maxFileSize) {
       throw new BadRequestException(`File size exceeds ${this.maxFileSize / 1024 / 1024}MB limit`);
     }
@@ -42,158 +41,113 @@ export class DocumentConverter {
 
   private async isLibreOfficeAvailable(): Promise<boolean> {
     if (this.libreOfficePath) {
-      return true; // Already found
+      return true;
     }
 
     try {
       const { execSync } = await import('child_process');
-      const fs = await import('fs');
       
-      // Define possible LibreOffice paths for different platforms
-      const possiblePaths = [
-        // Windows paths
-        'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
-        'C:\\Program Files\\LibreOffice\\program\\soffice.com',
-        'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
-        'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.com',
+      // Simple check - just try to run 'soffice --version'
+      // This works on both Windows (if in PATH) and Linux
+      execSync('soffice --version', { stdio: 'ignore' });
+      this.libreOfficePath = 'soffice'; // Use the command directly
+      this.logger.log('✅ LibreOffice found in PATH');
+      return true;
+    } catch (error) {
+      this.logger.warn('❌ LibreOffice not found in PATH');
+      return false;
+    }
+  }
+
+  private async convertWithLibreOffice(
+    file: Express.Multer.File,
+    targetFormat: DocumentFormat,
+  ): Promise<ConversionResult> {
+    const tmp = await import('tmp');
+    const fse = await import('fs-extra');
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    const tempDir = tmp.dirSync({ unsafeCleanup: true });
+    
+    try {
+      const inputPath = path.join(tempDir.name, file.originalname);
+      await fs.writeFile(inputPath, file.buffer);
+
+      const outputFileName = this.getOutputFileName(file.originalname, targetFormat);
+
+      // Use the detected LibreOffice command (works on both Windows and Linux)
+      const libreOfficeCmd = this.libreOfficePath || 'soffice';
+
+      // Try different conversion methods
+      const commands = [
+        // Method 1: Basic conversion
+        `${libreOfficeCmd} --headless --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
         
-        // Linux paths
-        '/usr/bin/soffice',
-        '/usr/bin/libreoffice',
-        '/usr/local/bin/soffice',
+        // Method 2: With writer filter
+        `${libreOfficeCmd} --headless --writer --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
         
-        // Mac paths
-        '/Applications/LibreOffice.app/Contents/MacOS/soffice',
+        // Method 3: Force recalculation
+        `${libreOfficeCmd} --headless --norestore --nofirststartwizard --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
         
-        // Just the command (if in PATH)
-        'soffice',
-        'libreoffice'
+        // Method 4: With infilter for PDF
+        `${libreOfficeCmd} --headless --infilter="writer_pdf_import" --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
       ];
 
-      for (const cmdPath of possiblePaths) {
+      let lastError = '';
+
+      for (const command of commands) {
         try {
-          if (cmdPath.includes('\\') || cmdPath.includes('/')) {
-            // This is a full path, check if file exists
-            if (fs.existsSync(cmdPath)) {
-              this.logger.log(`✅ Found LibreOffice at: ${cmdPath}`);
-              this.libreOfficePath = cmdPath;
-              return true;
+          this.logger.log(`Trying command: ${command}`);
+          
+          const { stdout, stderr } = await execAsync(command, { 
+            timeout: 45000,
+            maxBuffer: 1024 * 1024 * 10
+          });
+
+          if (stdout) this.logger.log(`LibreOffice stdout: ${stdout}`);
+          if (stderr) this.logger.warn(`LibreOffice stderr: ${stderr}`);
+
+          // Check for output file
+          const possibleOutputNames = [
+            outputFileName,
+            file.originalname.replace('.pdf', '.docx'),
+            'output.docx',
+            'converted.docx'
+          ];
+
+          for (const outputName of possibleOutputNames) {
+            const outputPath = path.join(tempDir.name, outputName);
+            if (await fse.pathExists(outputPath)) {
+              const data = await fs.readFile(outputPath);
+              this.logger.log(`✅ Success with command! Output: ${outputName}`);
+              
+              return {
+                success: true,
+                data,
+                mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                fileName: outputFileName,
+              };
             }
-          } else {
-            // This is just a command, check if it's in PATH
-            if (process.platform === 'win32') {
-              execSync(`where ${cmdPath}`, { stdio: 'ignore' });
-            } else {
-              execSync(`which ${cmdPath}`, { stdio: 'ignore' });
-            }
-            this.logger.log(`✅ Found LibreOffice in PATH: ${cmdPath}`);
-            this.libreOfficePath = cmdPath;
-            return true;
           }
+
+          // List all files for debugging
+          const files = await fs.readdir(tempDir.name);
+          this.logger.log(`Files in directory: ${files.join(', ')}`);
+
         } catch (error) {
-          // Continue to next path
+          lastError = error.message;
+          this.logger.warn(`Command failed: ${error.message}`);
+          continue;
         }
       }
 
-      this.logger.warn('❌ LibreOffice not found in any common locations');
-      return false;
-    } catch (error) {
-      this.logger.error(`Error checking for LibreOffice: ${error.message}`);
-      return false;
+      throw new Error(`All LibreOffice methods failed. Last error: ${lastError}`);
+    } finally {
+      tempDir.removeCallback();
     }
   }
-
- // src/converters/document.converter.ts
-// src/converters/document.converter.ts
-private async convertWithLibreOffice(
-  file: Express.Multer.File,
-  targetFormat: DocumentFormat,
-): Promise<ConversionResult> {
-  const tmp = await import('tmp');
-  const fse = await import('fs-extra');
-  const { exec } = await import('child_process');
-  const { promisify } = await import('util');
-  const execAsync = promisify(exec);
-
-  const tempDir = tmp.dirSync({ unsafeCleanup: true });
-  
-  try {
-    const inputPath = path.join(tempDir.name, file.originalname);
-    await fs.writeFile(inputPath, file.buffer);
-
-    const outputFileName = this.getOutputFileName(file.originalname, targetFormat);
-
-    // Use absolute path for Windows
-    const libreOfficeCmd = '"C:\\Program Files\\LibreOffice\\program\\soffice.exe"';
-
-    // Try DIFFERENT conversion methods for PDF to DOCX
-    const commands = [
-      // Method 1: Basic conversion
-      `${libreOfficeCmd} --headless --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
-      
-      // Method 2: With writer filter (for PDF import)
-      `${libreOfficeCmd} --headless --writer --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
-      
-      // Method 3: Force recalculation
-      `${libreOfficeCmd} --headless --norestore --nofirststartwizard --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
-      
-      // Method 4: With infilter for PDF
-      `${libreOfficeCmd} --headless --infilter="writer_pdf_import" --convert-to docx --outdir "${tempDir.name}" "${inputPath}"`,
-    ];
-
-    let lastError = '';
-
-    for (const command of commands) {
-      try {
-        this.logger.log(`Trying command: ${command}`);
-        
-        const { stdout, stderr } = await execAsync(command, { 
-          timeout: 45000, // 45 seconds
-          maxBuffer: 1024 * 1024 * 10
-        });
-
-        this.logger.log(`LibreOffice stdout: ${stdout}`);
-        if (stderr) this.logger.warn(`LibreOffice stderr: ${stderr}`);
-
-        // Check for output file (could have different names)
-        const possibleOutputNames = [
-          outputFileName,
-          file.originalname.replace('.pdf', '.docx'),
-          'output.docx',
-          'converted.docx'
-        ];
-
-        for (const outputName of possibleOutputNames) {
-          const outputPath = path.join(tempDir.name, outputName);
-          if (await fse.pathExists(outputPath)) {
-            const data = await fs.readFile(outputPath);
-            this.logger.log(`✅ Success with command! Output: ${outputName}`);
-            
-            return {
-              success: true,
-              data,
-              mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              fileName: outputFileName,
-            };
-          }
-        }
-
-        // List all files to see what was created
-        const files = await fs.readdir(tempDir.name);
-        this.logger.log(`Files in directory: ${files.join(', ')}`);
-
-      } catch (error) {
-        lastError = error.message;
-        this.logger.warn(`Command failed: ${error.message}`);
-        continue; // Try next command
-      }
-    }
-
-    throw new Error(`All LibreOffice methods failed. Last error: ${lastError}`);
-  } finally {
-    tempDir.removeCallback();
-  }
-}
 
   private async convertWithFallback(
     file: Express.Multer.File,
@@ -214,12 +168,11 @@ private async convertWithLibreOffice(
   }
 
   private async textToPdf(file: Express.Multer.File): Promise<ConversionResult> {
-    // Simple PDF generation from text
     const PDFDocument = await import('pdf-lib').then(lib => lib.PDFDocument);
     
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([600, 800]);
-    const text = file.buffer.toString('utf8').substring(0, 10000); // Limit text length
+    const text = file.buffer.toString('utf8').substring(0, 10000);
     
     page.drawText(text, {
       x: 50,
@@ -239,7 +192,6 @@ private async convertWithLibreOffice(
   }
 
   private async anyToText(file: Express.Multer.File): Promise<ConversionResult> {
-    // Extract text from various formats
     let text = '';
     
     if (file.mimetype === 'application/pdf') {
@@ -258,7 +210,7 @@ private async convertWithLibreOffice(
 
     return {
       success: true,
-      data: Buffer.from(text.substring(0, 5000)), // Limit output size
+      data: Buffer.from(text.substring(0, 5000)),
       mimeType: 'text/plain',
       fileName: this.getOutputFileName(file.originalname, DocumentFormat.TXT),
     };
@@ -285,11 +237,5 @@ private async convertWithLibreOffice(
       [DocumentFormat.TXT]: 'text/plain',
     };
     return mimeTypes[format];
-  }
-
-  // Method to manually set LibreOffice path (useful for testing)
-  setLibreOfficePath(path: string): void {
-    this.libreOfficePath = path;
-    this.logger.log(`Manually set LibreOffice path to: ${path}`);
   }
 }
