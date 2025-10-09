@@ -1,28 +1,41 @@
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
+  
+  // Lazy load heavy dependencies
+  const helmet = await import('helmet');
+  const compression = await import('compression');
 
-  const helmet = require('helmet');
-  const compression = require('compression');
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log'], // Reduce log verbosity
+    bufferLogs: true, // Buffer logs for performance
+  });
 
-  app.use(helmet());
-  app.use(compression());
+  // Security middleware
+  app.use(helmet.default({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false, // Disable for file operations
+  }));
+  
+  app.use(compression.default());
+
+  // Global prefix
   app.setGlobalPrefix('api');
   
-  // CORS - Updated for production
-    app.enableCors({
+  // Optimized CORS
+  app.enableCors({
     origin: [
       'http://localhost:3000',
       'https://file-converter-green.vercel.app',
       'https://file-converter-pro.vercel.app',
-      'https://*.vercel.app' // Allow all Vercel subdomains
     ],
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    maxAge: 86400, // 24 hours
   });
 
   // Validation
@@ -31,13 +44,15 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      disableErrorMessages: process.env.NODE_ENV === 'production', // Hide errors in prod
     }),
   );
 
   const port = process.env.PORT || 5000;
   await app.listen(port);
-  console.log(`🚀 Backend server running on port ${port}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  
+  logger.log(`🚀 Server running on port ${port}`);
+  logger.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.log(`💾 Memory usage: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 }
 bootstrap();

@@ -1,12 +1,14 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { ConvertFileDto, TargetFormat } from './dto/convert-file.dto';
-import { ConversionResult, FileValidationResult } from './interfaces/conversion.interface';
+// src/conversion.service.ts
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { ConvertFileDto } from './dto/convert-file.dto';
+import { ConversionResult } from './interfaces/conversion.interface';
 import { ImageConverter } from './converters/image.converter';
 import { DocumentConverter } from './converters/document.converter';
 
 @Injectable()
 export class ConversionService {
-  private readonly maxFileSize = 50 * 1024 * 1024; 
+  private readonly logger = new Logger(ConversionService.name);
+  private readonly maxFileSize = 10 * 1024 * 1024; // 10MB total limit
 
   constructor(
     private readonly imageConverter: ImageConverter,
@@ -17,65 +19,43 @@ export class ConversionService {
     file: Express.Multer.File,
     convertFileDto: ConvertFileDto,
   ): Promise<ConversionResult> {
-    // Validate file
-    const validation = this.validateFile(file);
-    if (!validation.isValid) {
-      throw new BadRequestException(validation.error);
-    }
-
-    // Perform conversion based on file type
-    if (file.mimetype.startsWith('image/')) {
-      return this.imageConverter.convert(file, convertFileDto.targetFormat as any);
-    } else if (
-      file.mimetype.includes('pdf') ||
-      file.mimetype.includes('document') ||
-      file.mimetype.includes('text')
-    ) {
-      return this.documentConverter.convert(file, convertFileDto.targetFormat as any);
-    } else {
-      throw new BadRequestException('Unsupported file type');
-    }
-  }
-
-  private validateFile(file: Express.Multer.File): FileValidationResult {
+    // Quick validation
     if (!file) {
-      return { isValid: false, error: 'No file provided' };
+      throw new BadRequestException('No file provided');
     }
 
     if (file.size > this.maxFileSize) {
-      return { isValid: false, error: 'File size exceeds 50MB limit' };
+      throw new BadRequestException(`File size exceeds ${this.maxFileSize / 1024 / 1024}MB limit`);
     }
 
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/jpg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
-    ];
+    this.logger.log(`Converting file: ${file.originalname} to ${convertFileDto.targetFormat}`);
 
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      return { isValid: false, error: 'File type not supported' };
+    try {
+      if (file.mimetype.startsWith('image/')) {
+        return await this.imageConverter.convert(file, convertFileDto.targetFormat as any);
+      } else {
+        return await this.documentConverter.convert(file, convertFileDto.targetFormat as any);
+      }
+    } catch (error) {
+      this.logger.error(`Conversion service error: ${error.message}`);
+      throw new BadRequestException(`Conversion failed: ${error.message}`);
     }
-
-    return { isValid: true, mimeType: file.mimetype };
   }
 
   getSupportedConversions() {
     return {
-      'image/jpeg': ['png', 'webp', 'gif'],
-      'image/jpg': ['png', 'webp', 'gif'],
-      'image/png': ['jpeg', 'jpg', 'webp', 'gif'],
-      'image/gif': ['jpeg', 'jpg', 'png', 'webp'],
-      'image/webp': ['jpeg', 'jpg', 'png', 'gif'],
+      // Image conversions (always available)
+      'image/jpeg': ['png', 'webp'],
+      'image/jpg': ['png', 'webp'],
+      'image/png': ['jpeg', 'jpg', 'webp'],
+      'image/gif': ['jpeg', 'jpg', 'png'],
+      'image/webp': ['jpeg', 'jpg', 'png'],
+      
+      // Document conversions (require LibreOffice)
       'application/pdf': ['docx', 'txt'],
       'application/msword': ['pdf', 'txt'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['pdf', 'txt'],
-      'text/plain': ['pdf', 'docx'],
+      'text/plain': ['pdf'],
     };
   }
 }

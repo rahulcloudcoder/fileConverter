@@ -5,9 +5,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/src/main.js",
-    "start:prod": "node dist/main.js",
     "start:dev": "nest start --watch",
-    "test": "jest"
+    "start:debug": "nest start --debug --watch",
+    "test:conversion": "ts-node test-conversion.ts",
+    "dev": "nodemon --exec ts-node src/main.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -16,26 +17,26 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "compression": "^1.7.4",
-    "dotenv": "^17.2.3",
-    "express-rate-limit": "^7.1.5",
+    "docx": "^9.5.1",
+    "fs-extra": "^11.3.2",
     "helmet": "^7.1.0",
     "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.33.2",
-    "uuid": "^9.0.1"
+    "tmp": "^0.2.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
-    "@nestjs/testing": "^11.0.1",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^20.19.19",
     "@types/express": "^4.17.21",
     "@types/multer": "^1.4.11",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.2.5",
+    "@types/node": "^20.19.19",
     "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

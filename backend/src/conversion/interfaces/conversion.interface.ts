@@ -1,14 +1,24 @@
-export interface ConversionResult {
-  success: boolean;
-  data?: Buffer;
-  error?: string;
-  mimeType: string;
-  fileName: string;
+// src/interfaces/conversion.interface.ts
+export enum DocumentFormat {
+  PDF = 'pdf',
+  DOCX = 'docx',
+  TXT = 'txt',
 }
 
-export interface SupportedConversion {
-  from: string[];
-  to: string[];
+export enum ImageFormat {
+  JPG = 'jpg',
+  JPEG = 'jpeg',
+  PNG = 'png',
+  WEBP = 'webp',
+  GIF = 'gif',
+}
+
+export interface ConversionResult {
+  success: boolean;
+  data: Buffer;
+  mimeType: string;
+  fileName: string;
+  error?: string;
 }
 
 export interface FileValidationResult {
