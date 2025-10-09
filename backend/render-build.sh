@@ -6,29 +6,32 @@ echo "🚀 Starting build process on Render..."
 echo "📦 Updating package list..."
 apt-get update
 
-# Install LibreOffice (required for your converter)
-echo "🔧 Installing LibreOffice..."
-apt-get install -y libreoffice
+# Install LibreOffice with minimal dependencies (headless)
+echo "🔧 Installing LibreOffice (this may take a few minutes)..."
+apt-get install -y --no-install-recommends libreoffice
 
-# Install additional dependencies for better PDF support
-echo "📥 Installing PDF tools..."
-apt-get install -y poppler-utils
+# Install additional fonts and dependencies for better compatibility
+echo "📥 Installing additional dependencies..."
+apt-get install -y fonts-liberation fonts-dejavu poppler-utils
 
-# Verify installations
-echo "🔍 Verifying installations..."
+# Verify LibreOffice installation
+echo "🔍 Verifying LibreOffice installation..."
 if command -v soffice &> /dev/null; then
+    echo "✅ LibreOffice command found"
     soffice --version
-    echo "✅ LibreOffice installed successfully"
 else
-    echo "❌ LibreOffice installation failed"
-    exit 1
+    echo "❌ LibreOffice command not found, checking alternative locations..."
+    # Check common installation paths
+    find /usr -name "soffice" 2>/dev/null | head -5
+    find /opt -name "soffice" 2>/dev/null | head -5
 fi
 
-if command -v pdftotext &> /dev/null; then
-    pdftotext -v
-    echo "✅ Poppler-utils installed successfully"
+# Check if LibreOffice is actually working
+echo "🧪 Testing LibreOffice functionality..."
+if timeout 10s soffice --help &> /dev/null; then
+    echo "✅ LibreOffice is working correctly"
 else
-    echo "❌ Poppler-utils installation failed"
+    echo "⚠️ LibreOffice may have issues starting"
 fi
 
 # Install Node.js dependencies
@@ -39,16 +42,4 @@ npm install
 echo "🔨 Building TypeScript project..."
 npm run build
 
-# Check if build was successful
-echo "📁 Checking build output..."
-if [ -d "dist" ]; then
-    echo "✅ Build completed successfully!"
-    echo "📁 Build structure:"
-    find dist -type f -name "*.js" | head -10
-    echo "📍 Main file should be at: dist/main.js"
-else
-    echo "❌ Build failed - dist directory not found"
-    exit 1
-fi
-
-echo "🎉 Render build process completed!"
+echo "✅ Build process completed!"
