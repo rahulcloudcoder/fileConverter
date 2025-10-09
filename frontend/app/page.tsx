@@ -76,7 +76,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000,
+        timeout: 50000,
       });
 
       const blob = new Blob([response.data]);
