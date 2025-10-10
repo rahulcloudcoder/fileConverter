@@ -3,7 +3,6 @@ services:
     name: file-converter-api
     env: node
     plan: free
-    rootDirectory: backend 
     buildCommand: |
       chmod +x render-build.sh
       ./render-build.sh
