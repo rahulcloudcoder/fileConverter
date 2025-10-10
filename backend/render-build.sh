@@ -1,46 +1,32 @@
 #!/bin/bash
 
-echo "🚀 Starting build process on Render..."
+echo "🚀 Starting build with LibreOffice..."
 
-# Update package list
-echo "📦 Updating package list..."
+# Update and install minimal LibreOffice
 apt-get update
 
-# Install LibreOffice with proper dependencies
-echo "🔧 Installing LibreOffice..."
-apt-get install -y libreoffice
-
-# Install additional dependencies for better compatibility
-echo "📥 Installing additional dependencies..."
-apt-get install -y \
+# Try installing only the core components
+echo "🔧 Installing minimal LibreOffice..."
+apt-get install -y --no-install-recommends \
+    libreoffice-core \
     libreoffice-writer \
-    libreoffice-calc \
-    libreoffice-impress \
-    libreoffice-base \
-    fonts-liberation \
-    fonts-dejavu \
-    poppler-utils
+    libreoffice-common
 
-# Verify installation
-echo "🔍 Verifying LibreOffice installation..."
-if command -v soffice &> /dev/null; then
-    echo "✅ LibreOffice command found"
-    soffice --version
-    echo "Testing conversion capability..."
-    timeout 15s soffice --headless --help > /dev/null 2>&1 && echo "✅ LibreOffice is functional" || echo "⚠️ LibreOffice has startup issues"
-else
-    echo "❌ LibreOffice command not found"
-    echo "Searching for LibreOffice..."
-    find /usr -name "soffice" 2>/dev/null | head -5
-    find /opt -name "soffice" 2>/dev/null | head -5
+# Alternative: Try headless version
+if ! command -v soffice &> /dev/null; then
+    echo "Trying headless LibreOffice..."
+    apt-get install -y libreoffice-headless
 fi
 
-# Install Node.js dependencies
-echo "📥 Installing npm packages..."
+# Final attempt with timeout
+if command -v soffice &> /dev/null; then
+    echo "✅ LibreOffice found"
+    timeout 10s soffice --version && echo "✅ Working" || echo "❌ Not working"
+else
+    echo "❌ LibreOffice installation failed"
+    echo "Consider upgrading to paid plan or using alternative hosting"
+fi
+
 npm install
-
-# Build the project
-echo "🔨 Building TypeScript project..."
 npm run build
-
-echo "✅ Build completed!"
+echo "✅ Build completed"
