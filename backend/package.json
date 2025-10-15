@@ -3,31 +3,40 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "nest build",
+    "build": "nest build ",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "start:debug": "nest start --debug --watch",
     "test:conversion": "ts-node test-conversion.ts",
     "dev": "nodemon --exec ts-node src/main.ts"
+    
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@pdf-lib/fontkit": "^1.1.1",
+    "axios": "^1.12.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "compression": "^1.7.4",
-    "docx": "^9.5.1",
+    "docx": "^8.5.0",
+    "formdata-node": "^6.0.3",
     "fs-extra": "^11.3.2",
     "helmet": "^7.1.0",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.6.0",
     "multer": "^1.4.5-lts.1",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^3.11.174",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.33.2",
-    "tmp": "^0.2.5"
+    "tmp": "^0.2.5",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",

@@ -11,6 +11,8 @@ export enum ImageFormat {
   PNG = 'png',
   WEBP = 'webp',
   GIF = 'gif',
+  BMP = 'bmp',
+  TIFF = 'tiff',
 }
 
 export interface ConversionResult {
@@ -25,4 +27,11 @@ export interface FileValidationResult {
   isValid: boolean;
   error?: string;
   mimeType?: string;
+}
+
+export interface ConversionCapabilities {
+  service: string;
+  version: string;
+  features: string[];
+  limitations: string[];
 }
